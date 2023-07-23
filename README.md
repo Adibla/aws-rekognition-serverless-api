@@ -117,6 +117,15 @@ This will guide you through the deployment process, including setting the deploy
 
 When deploy is completed, you can check API Gateway endpoint from console output
 
+### TODO
+
+These are the tasks that still need to be completed to improve the project:
+
+- Add tests to verify the application locally
+- Improve input filters for incoming payloads
+- Add more optional resources to the SAM template
+- Integrate authentication mechanisms internal to the infrastructure as an alternative to static tokens
+
 ### Conclusion
 
 This AWS SAM API project demonstrates how to leverage AWS Recognitions services to perform session-based liveness detection and image comparison. It can be used as a starting point for building more complex applications that require biometric authentication and verification.
