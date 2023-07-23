@@ -1,0 +1,202 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  aws-rekognition-backend
+Transform:
+- AWS::Serverless-2016-10-31
+Parameters:
+  ApiRateLimitRequest:
+    Type: Number
+    Default: 50
+    Description: Maximum number of requests that can be made per unit of time
+  ApiBurstLimitRequest:
+    Type: Number
+    Default: 100
+    Description: It sets a higher limit on the number of requests that can be made within a short period of time, allowing for occasional spikes in traffic
+  ApiMonthLimitRequest:
+    Type: Number
+    Default: 100000
+    Description: Name of an API key
+  ApiToken:
+    Type: String
+    Description: API token used for protect endpoints (only for a short time, move to API Gateway auth).
+    NoEcho: true
+  Environment:
+    Type: String
+    AllowedValues:
+      - development
+      - production
+      - staging
+    Default: development
+Resources:
+  Api:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: !Sub App-${Environment}
+      Auth:
+        ApiKeyRequired: false
+        UsagePlan:
+          CreateUsagePlan: PER_API
+          Description: Usage plan for this API
+          Quota:
+            Limit: !Ref ApiMonthLimitRequest
+            Period: MONTH
+          Throttle:
+            BurstLimit: !Ref ApiBurstLimitRequest
+            RateLimit: !Ref ApiRateLimitRequest
+  checkSession:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/check-liveness-session.handler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Role: !GetAtt SessionFunctionRole.Arn
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref S3SessionBucket
+          API_TOKEN: !Ref ApiToken
+      Events:
+        Api:
+          Type: Api            
+          Properties:
+            Path: /session/{sessionId}
+            RestApiId: !Ref Api
+            Method: GET
+  initSession:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/init-liveness-session.handler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Role: !GetAtt SessionFunctionRole.Arn
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref S3SessionBucket
+          API_TOKEN: !Ref ApiToken
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /session
+            RestApiId: !Ref Api
+            Method: POST
+
+  faceComparison:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/face-comparison.handler
+      Runtime: nodejs18.x
+      Architectures:
+      - x86_64
+      MemorySize: 128
+      Timeout: 100
+      Role: !GetAtt FaceComparisonFunctionRole.Arn
+      Policies:
+      - AWSLambdaBasicExecutionRole
+      Environment:
+        Variables:
+          BUCKET_NAME: !Ref S3FaceComparisonBucket
+          API_TOKEN: !Ref ApiToken
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            RestApiId: !Ref Api
+            Path: /compare
+            Method: POST
+
+  S3SessionBucket:
+    Type: 'AWS::S3::Bucket'
+  S3FaceComparisonBucket:
+    Type: 'AWS::S3::Bucket'
+  SessionFunctionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: s3-access-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource: !Join ['', ['arn:aws:s3:::', !Ref S3SessionBucket, '/*']]
+        - PolicyName: rekognition-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'rekognition:*'
+                Resource: '*'
+       
+  FaceComparisonFunctionRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        - PolicyName: s3-access-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 's3:GetObject'
+                  - 's3:PutObject'
+                Resource: !Join ['', ['arn:aws:s3:::', !Ref S3FaceComparisonBucket, '/*']]
+        - PolicyName: rekognition-policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'rekognition:CompareFaces'
+                Resource: '*'
+       
+  ApplicationResourceGroup:
+    Type: AWS::ResourceGroups::Group
+    Properties:
+      Name:
+        Fn::Sub: ApplicationInsights-SAM-${AWS::StackName}
+      ResourceQuery:
+        Type: CLOUDFORMATION_STACK_1_0
+  ApplicationInsightsMonitoring:
+    Type: AWS::ApplicationInsights::Application
+    Properties:
+      ResourceGroupName:
+        Ref: ApplicationResourceGroup
+      AutoConfigurationEnabled: 'true'
+Outputs:
+  WebEndpoint:
+    Description: API Gateway endpoint URL for staging
+    Value: !Sub "https://${Api}.execute-api.${AWS::Region}.amazonaws.com/App-${Environment}/"
+Globals:
+  Function:
+    Tracing: Active
+  Api:
+    TracingEnabled: true
