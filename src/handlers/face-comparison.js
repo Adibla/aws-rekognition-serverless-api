@@ -27,7 +27,12 @@ exports.handler = async (event) => {
 
 		const response = {
 			statusCode: 200,
-			body: JSON.stringify(comparisonResult)
+			body: JSON.stringify(comparisonResult),
+			headers: {
+				"Access-Control-Allow-Headers" : "Content-Type",
+				"Access-Control-Allow-Origin": "*",
+				"Access-Control-Allow-Methods": "POST"
+			}
 		};
 		return response;
 	}

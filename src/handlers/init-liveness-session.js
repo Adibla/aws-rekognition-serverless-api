@@ -18,12 +18,16 @@ exports.handler = async (event) => {
     const input = {
       ClientRequestToken: body?.clientRequestToken,
     };
-
     const command = new CreateFaceLivenessSessionCommand(input);
     const responseSession = await client.send(command);
     const response = {
       statusCode: 200,
-      body: JSON.stringify(responseSession)
+      body: JSON.stringify(responseSession),
+      headers: {
+        "Access-Control-Allow-Headers" : "Content-Type",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST"
+      }
     };
     return response;
   }

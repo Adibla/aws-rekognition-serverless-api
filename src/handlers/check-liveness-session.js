@@ -23,7 +23,12 @@ exports.handler = async (event) => {
     const sessionResult = await client.send(command);
     const response = {
       statusCode: 200,
-      body: JSON.stringify(sessionResult)
+      body: JSON.stringify(sessionResult),
+      headers: {
+        "Access-Control-Allow-Headers" : "Content-Type",
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET"
+      }
     };
     return response;
   }

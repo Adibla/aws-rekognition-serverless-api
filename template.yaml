@@ -61,7 +61,7 @@ Resources:
           API_TOKEN: !Ref ApiToken
       Events:
         Api:
-          Type: Api            
+          Type: Api
           Properties:
             Path: /session/{sessionId}
             RestApiId: !Ref Api
@@ -147,7 +147,7 @@ Resources:
                 Action:
                   - 'rekognition:*'
                 Resource: '*'
-       
+
   FaceComparisonFunctionRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -177,7 +177,7 @@ Resources:
                 Action:
                   - 'rekognition:CompareFaces'
                 Resource: '*'
-       
+
   ApplicationResourceGroup:
     Type: AWS::ResourceGroups::Group
     Properties:
@@ -200,3 +200,7 @@ Globals:
     Tracing: Active
   Api:
     TracingEnabled: true
+    Cors:
+      AllowMethods: "'GET,POST,OPTIONS'"
+      AllowHeaders: "'*'"
+      AllowOrigin: "'*'"
