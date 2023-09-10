@@ -21,7 +21,6 @@ s3_prefix = "aws-rekognition-serverless-api"
 region = "us-east-1"
 disable_rollback = true
 image_repositories = []
-stack_name = "aws-rekognition-serverless-api"
 parameter_overrides = "ApiRateLimitRequest=\"50\" ApiBurstLimitRequest=\"100\" ApiMonthLimitRequest=\"100000\" Environment=\"development\""
 
 [default.package.parameters]

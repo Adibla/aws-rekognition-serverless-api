@@ -2,6 +2,7 @@ const { RekognitionClient, CreateFaceLivenessSessionCommand } = require("@aws-sd
 
 const client = new RekognitionClient({});
 const apiToken = process.env.API_TOKEN;
+const ApiError = require("../exceptions/api-error");
 
 exports.handler = async (event) => {
   try {
